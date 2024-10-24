@@ -4,115 +4,36 @@
 #include <time.h>
 #include "arvores.h"
 
-typedef struct noArvore_ noArvore;
-struct noArvore_
-{
-    int valor;
-    noArvore *esq;
-    noArvore *dir;
-};
-
-noArvore *busca(noArvore *raiz, int k)
-{
-    if (raiz == NULL || raiz->valor == k) // Verifica se a raiz é nula ou se já é o valor que procura.
-        return raiz;
-    if (raiz->valor > k)            // Verifica se ele é maior que o valor procurado.
-        return busca(raiz->esq, k); // faz o uso da recursividade no nó da esq
-    else
-        return busca(raiz->dir, k); // faz o uso da recursividade no nó da esq
-}
-
-noArvore *insere(noArvore *raiz, noArvore *n)
-{
-    if (raiz == NULL) // Verifica se a raiz é nula.
-    {
-        return n; // O novo nó se torna a raiz.
-    }
-    if (raiz->valor > n->valor) // Caso o valor da raiz seja maior que o que se procura.
-    {
-        raiz->esq = insere(raiz->esq, n); // O novo nó é inserido a esquerda da raiz.
-    }
-    else
-    {
-        raiz->dir = insere(raiz->dir, n); // Senão ele é inserido a direita da raiz.
-    }
-    return raiz;
-}
-noArvore *buscaPai(noArvore *raiz, noArvore *n)
-{
-
-    if (raiz == NULL || raiz == n) // Verifica se a raiz é nula ou se é igual ao valor que deseja.
-    {
-        return NULL;
-    }
-
-    if (raiz->esq == n || raiz->dir == n) // Caso for igual a esquerda ou direita da raiz.
-    {
-        return raiz;
-    }
-    if (n->valor > raiz->valor) // Se o valor nó procurado for maior que o valor da raiz.
-    {
-        return buscaPai(raiz->dir, n); // A busca é feita na direita.
-    }
-    else
-    {
-        return buscaPai(raiz->esq, n); // A busca é feita na esquerda.
-    }
-}
-noArvore *removeRaiz(noArvore *raiz)
-{
-    noArvore *p, *q;
-
-    if (raiz->esq == NULL) // Se o nó da esquerda da raiz for nulo.
-    {
-        q = raiz->dir;
-        free(raiz);
-        return (q);
-    }
-
-    p = raiz;
-    q = raiz->esq;
-
-    while (q->dir != NULL) // Enquanto a direita do nó que se deseja adicionar for diferente de nulo.
-    {
-        p = q;
-        q = q->dir;
-    }
-    if (p != raiz) // Se o
-    {
-        p->dir = q->esq;
-        q->esq = raiz->esq;
-    }
-    q->dir = raiz->dir;
-    free(raiz);
-    return q;
-}
-
-noArvore *removeNo(noArvore *raiz, int valor)
-{
-    noArvore *n = busca(raiz, valor); // Verifica se o nó existe
-    if (n)
-    {
-        noArvore *pai = buscaPai(raiz, n); // Descobre qual é o nó pai
-        if (pai)                           // caso tenha no pai
-        {
-            if (pai->dir == n)
-                pai->dir = removeRaiz(n); // no a ser removido é filho a direita
-            else
-                pai->esq = removeRaiz(n); // no a ser removido e filho a esquerda
-        }
-        else
-        {
-            raiz = removeRaiz(n); // não possui pai, logo, é o próprio no raiz
-        }
-    }
-    return raiz;
-}
-
-double arvore_binaria(int instancia_num)
+double arvore_binaria(FILE *arq)
 {
     double tempo = 0;
     clock_t begin = clock();
+
+    char operacao;
+    int valor;
+    noArvore *raiz = NULL;
+    noArvore *n;
+    char line[16];
+
+    while (fgets(line, sizeof(line), arq))
+    {
+        if (sscanf(line, "%c %d", &operacao, &valor) == 2)
+        {
+            n = malloc(sizeof(noArvore));
+            n->valor = valor;
+            n->esq = NULL;
+            n->dir = NULL;
+
+            if (operacao == 'I')
+            {
+                raiz = insere(raiz, n);
+            }
+            if (operacao == 'R')
+            {
+                raiz = removeNo(raiz, valor);
+            }
+        }
+    }
 
     clock_t end = clock();
     // calcula o tempo decorrido encontrando a diferença (end - begin) e
@@ -121,10 +42,30 @@ double arvore_binaria(int instancia_num)
     return (tempo);
 }
 
-double arvore_balanceada(int instancia_num)
+double arvore_balanceada(FILE *arq)
 {
     double tempo = 0;
     clock_t begin = clock();
+
+    char operacao;
+    int valor;
+    noArvore *raiz = NULL;
+    char line[16];
+
+    while (fgets(line, sizeof(line), arq))
+    {
+        if (sscanf(line, "%c %d", &operacao, &valor) == 2)
+        {
+            if (operacao == 'I')
+            {
+                raiz = insert(raiz, valor);
+            }
+            if (operacao == 'R')
+            {
+                raiz = deleteNode(raiz, valor);
+            }
+        }
+    }
 
     clock_t end = clock();
     // calcula o tempo decorrido encontrando a diferença (end - begin) e
@@ -147,8 +88,35 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    double tempo_n_balanceada = arvore_binaria(instancia_num);
-    double tempo_balanceada = arvore_balanceada(instancia_num);
+    if (argc != 2)
+    { // garante que o número correto de argumentos foi passado
+        printf("Número inválido de argumentos\n");
+        return -1; // -1 é o erro de número de argumentos
+    }
+    else
+        printf("Resolução da instancia %s\n", argv[1]);
+
+    FILE *arq = fopen(argv[1], "r");
+
+    if (arq == NULL)
+    { // garante que o arquivo passado existe/foi encontrado
+        printf("ERRO! Arquivo não foi encontrado!\n");
+        return 1; // 1 é o erro de arquivo inválido
+    }
+
+    double tempo_n_balanceada = arvore_binaria(arq);
+    fclose(arq);
+
+    arq = fopen(argv[1], "r");
+
+    if (arq == NULL)
+    { // garante que o arquivo passado existe/foi encontrado
+        printf("ERRO! Arquivo não foi encontrado!\n");
+        return 1; // 1 é o erro de arquivo inválido
+    }
+
+    double tempo_balanceada = arvore_balanceada(arq);
+    fclose(arq);
 
     printf("%f\n%f\n", tempo_n_balanceada, tempo_balanceada);
 
